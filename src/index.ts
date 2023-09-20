@@ -22,3 +22,22 @@ export const initialize_board = (width: number, height: number, board: Board = [
   return initialize_board(width, height - 1, new_board);
 };
 
+const render_board = (board: Board) => {
+  // Clear the terminal
+  process.stdout.write("\x1b[2J");
+  
+  board.forEach((row, y) => {
+    let rowStr = '';
+    row.forEach((cell, x) => {
+      rowStr += cell ? 'o' : ' ';
+    });
+    // Move the cursor to the beginning of the row
+    process.stdout.write(`\x1b[${y + 1};1H${rowStr}`);
+  });
+};
+
+let height = 20;
+let width = 20;
+let board: Board = initialize_board(width, height);
+
+render_board(board);
