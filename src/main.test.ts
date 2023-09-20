@@ -1,4 +1,4 @@
-import { Cell, Row, Board, initialize_cell, initialize_row, initialize_board } from './index'; // import your functions
+import { Cell, Row, Board, initialize_cell, initialize_row, initialize_board } from './main'; // import your functions
 
 describe('Game of Life Initialization', () => {
 
