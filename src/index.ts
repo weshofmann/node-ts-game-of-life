@@ -11,7 +11,8 @@ export type CellEvaluator = (
 ) => Cell;
 
 export type CellEvaluatorGenerator = (
-  only_a_flesh_wound_percent: number
+  only_a_flesh_wound_percent: number,
+  alien_abduction_percent: number,
 ) => CellEvaluator;
 
 
@@ -22,7 +23,10 @@ const log_file = './game.log';
 const log = fs.createWriteStream(log_file);
 
 // this will generate a cell_updater function that has a set percentage chance of a cell staying alive
-export const cell_updater_generator: CellEvaluatorGenerator = (only_a_flesh_wound_percent) => {
+export const cell_updater_generator: CellEvaluatorGenerator = (
+  only_a_flesh_wound_percent, 
+  alien_abduction_percent
+) => {
   // This is a CellEvaluator function that implement's the rules of Conway's Game of Life. 
   // It assigns a boolan value for a given cell based on the state of the cell's neighbors.
   const cell_updater: CellEvaluator = (x, y, last_board) => {
@@ -36,9 +40,11 @@ export const cell_updater_generator: CellEvaluatorGenerator = (only_a_flesh_woun
       return count + (last_board[ny]?.[nx] ? 1 : 0);
     }, 0);
     return (
-      (living_neighbors === 3) || 
-      (living_neighbors === 2 && last_board[y][x]) ||
-      (Math.random() < only_a_flesh_wound_percent && last_board[y][x])    // allow the possibility for a cell to randomly stay alive
+      (
+        (living_neighbors === 3) || 
+        (living_neighbors === 2 && last_board[y][x]) ||
+        (Math.random() < only_a_flesh_wound_percent && last_board[y][x])    // allow the possibility for a cell to randomly stay alive
+      ) && (Math.random() > alien_abduction_percent)
     );
   };
   return cell_updater;
@@ -135,9 +141,12 @@ export const start_game = () => {
   let prev_board_count = 6;
   let prev_boards: Board[] = [];
 
+  let alien_abduction_percent = 0;
   let only_a_flesh_wound_percent = 0;
 
-  let cell_updater: CellEvaluator = cell_updater_generator(only_a_flesh_wound_percent); 
+  let cell_updater: CellEvaluator = cell_updater_generator(
+    only_a_flesh_wound_percent, alien_abduction_percent
+  ); 
 
   // clear the terminal/screen
   process.stdout.write('\u001b[2J\u001b[0;0H');
@@ -148,13 +157,23 @@ export const start_game = () => {
     // compare the currrent board with our previous boards
     if (prev_boards.some((prev_board) => are_boards_equal(board, prev_board))) {
       only_a_flesh_wound_percent += 0.00001;
-      cell_updater = cell_updater_generator(only_a_flesh_wound_percent);
-      log.write(`Board was static for ${prev_board_count} steps.  Setting only_a_flesh_wound_percent to ${only_a_flesh_wound_percent}\n`);
+      alien_abduction_percent += 0.0000001;
+      cell_updater = cell_updater_generator(
+        only_a_flesh_wound_percent,
+        alien_abduction_percent
+      );
+      log.write(`Board was static for ${prev_board_count} steps.` + 
+        `only_a_flesh_wound_percent: ${only_a_flesh_wound_percent}` + 
+        `alien_abduction_percent: ${alien_abduction_percent}\n`
+      );
     } else {
       if (only_a_flesh_wound_percent > 0) {
         only_a_flesh_wound_percent = 0;
-        cell_updater = cell_updater_generator(only_a_flesh_wound_percent);
-        log.write(`Resetting only_a_flesh_wound_percent to ${only_a_flesh_wound_percent}\n`);
+        cell_updater = cell_updater_generator(
+          only_a_flesh_wound_percent,
+          alien_abduction_percent
+        );
+        log.write(`We are now no longer stuck.  Resetting only_a_flesh_wound_percent and alien_abduction_percent\n`);
       }
     }
 
