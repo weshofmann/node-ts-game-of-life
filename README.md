@@ -1,1 +1,3 @@
 # ts-game-of-life
+
+I'm brand new to Typescript so this is a little implementation of Conway's Game of Life that I'm writing to explore various features of the Typescript language.  The implementation here is purposely pretty strange as I wanted to focus on the functional aspects of the language at first.  This absolutely isn't an efficient or easy-to-maintain implementation and should be viewed only as a learning exercise.
