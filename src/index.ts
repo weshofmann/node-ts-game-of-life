@@ -11,8 +11,8 @@ export type CellEvaluator = (
 ) => Cell;
 
 
-const HEIGHT   = 40;
-const WIDTH    = 80;
+const HEIGHT   = process.stdout.rows - 3;
+const WIDTH    = process.stdout.columns - 2;
 const log_file = './game.log';
 
 const log = fs.createWriteStream(log_file);
@@ -81,18 +81,19 @@ export const render_board = (board: Board) => {
   process.stdout.write('\u001b[0;0H');
   
   process.stdout.write(
-    `width: ${board[0].length}, height: ${board.length}\n` + "-".repeat(board[0].length) + "\n"
+    `width: ${board[0].length}, height: ${board.length}\n` + "-".repeat(board[0].length + 2) + "\n"
   );
 
   board.forEach((row, y) => {
-    let row_str = '';
+    let row_str = '|';
     row.forEach((cell, x) => {
       row_str += cell ? 'o' : ' ';
     });
+    row_str += '|';
     process.stdout.write(`${row_str}\n`);
     // process.stdout.write(`\x1b[${y + 3};1H${row_str}\n`);
   });
-  process.stdout.write("-".repeat(board[0].length) + "\n");
+  process.stdout.write("-".repeat(board[0].length + 2));
 };
 
 
