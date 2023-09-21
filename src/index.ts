@@ -32,7 +32,7 @@ export const cell_updater: CellEvaluator = (x, y, last_board) => {
     [0, -1],           [0, 1],
     [1, -1], [1, 0], [1, 1],
   ];
-  const living_neighbors = neighbors.reduce((count, [dx, dy]) => {
+  const living_neighbors = neighbors.reduce((count, [dy, dx]) => {
     const nx = x + dx, ny = y + dy;
     return count + (last_board[ny]?.[nx] ? 1 : 0);
   }, 0);
@@ -50,10 +50,14 @@ export const update_row = (
   row           : Row = []
 ): Row => {
   if (width <= 0) return row;
-  const new_row = row.concat(
-    // we subtract 1 from width and height because we are 0-indexed
-    cell_evaluator(width - 1, height - 1, last_board)
-  );
+  // since we are populating this array essentially backwards through this tail-recursive implementation,
+  // figuring out our x and y coordinates is a little tricky.  We can't just use `width` and `height` as
+  // the x and y coordinates, because those are the dimensions of the board, not the coordinates of the
+  // cell we are evaluating.  So we have to do a little math to figure out the coordinates of the cell
+  // we are evaluating.
+  const x = WIDTH - width;
+  const y = HEIGHT - height;
+  const new_row = row.concat(cell_evaluator(x, y, last_board));
   return update_row(width - 1, height, cell_evaluator, last_board, new_row);
 };
 
@@ -106,8 +110,12 @@ export const start_game = () => {
 
   const loop = setInterval(() => {
     render_board(board);
+    log.write('-------------------\n');
+    log.write('Last Board:' + JSON.stringify(board) + '\n');
+
     board = update_board(WIDTH, HEIGHT, cell_updater, board);
-  }, 100);
+    log.write('New Board:' + JSON.stringify(board) + '\n');
+  }, 50);
 };
 
 
