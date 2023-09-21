@@ -115,7 +115,7 @@ export const start_game = () => {
 
     board = update_board(WIDTH, HEIGHT, cell_updater, board);
     log.write('New Board:' + JSON.stringify(board) + '\n');
-  }, 50);
+  }, 100);
 };
 
 
