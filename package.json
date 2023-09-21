@@ -2,7 +2,7 @@
   "name": "ts-game-of-life",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
     "clean": "rimraf ./out",
     "build": "tsc",
