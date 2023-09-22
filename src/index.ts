@@ -138,15 +138,21 @@ export const are_boards_equal = (board1: Board, board2: Board): boolean => {
 export const start_game = () => {
   let board: Board = update_board(WIDTH, HEIGHT, cell_initializer);
 
-  let prev_board_count = 6;
+  let prev_board_count = 10;
   let prev_boards: Board[] = [];
 
+  let decrease_randomness = false;
+
   let alien_abduction_percent = 0;
+  let alien_abduction_percent_increment = 0.0000001;
   let only_a_flesh_wound_percent = 0;
+  let only_a_flesh_wound_percent_increment = 0.00001;
 
   let cell_updater: CellEvaluator = cell_updater_generator(
     only_a_flesh_wound_percent, alien_abduction_percent
   ); 
+
+  log.write("Starting game...\n");
 
   // clear the terminal/screen
   process.stdout.write('\u001b[2J\u001b[0;0H');
@@ -156,25 +162,36 @@ export const start_game = () => {
 
     // compare the currrent board with our previous boards
     if (prev_boards.some((prev_board) => are_boards_equal(board, prev_board))) {
-      only_a_flesh_wound_percent += 0.00001;
-      alien_abduction_percent += 0.0000001;
+      only_a_flesh_wound_percent += only_a_flesh_wound_percent_increment;
+      alien_abduction_percent += alien_abduction_percent_increment;
       cell_updater = cell_updater_generator(
         only_a_flesh_wound_percent,
         alien_abduction_percent
       );
-      log.write(`Board was static for ${prev_board_count} steps.` + 
-        `only_a_flesh_wound_percent: ${only_a_flesh_wound_percent}` + 
-        `alien_abduction_percent: ${alien_abduction_percent}\n`
+      log.write(`+++ INCREASING RANDOMNESS` + 
+        `  only_a_flesh_wound_percent: ${only_a_flesh_wound_percent.toFixed(8)}` + 
+        `  alien_abduction_percent: ${alien_abduction_percent.toFixed(8)}\n`
       );
     } else {
       if (only_a_flesh_wound_percent > 0) {
-        only_a_flesh_wound_percent = 0;
+        only_a_flesh_wound_percent -= Math.max(0, only_a_flesh_wound_percent_increment);
+        decrease_randomness = true;
+      };
+      if (alien_abduction_percent > 0) {
+        alien_abduction_percent -= Math.max(0, alien_abduction_percent_increment);
+        decrease_randomness = true;
+      };
+      if (decrease_randomness) {
         cell_updater = cell_updater_generator(
           only_a_flesh_wound_percent,
           alien_abduction_percent
         );
-        log.write(`We are now no longer stuck.  Resetting only_a_flesh_wound_percent and alien_abduction_percent\n`);
-      }
+        log.write(`--- DECREASING RANDOMNESS` + 
+          `  only_a_flesh_wound_percent: ${only_a_flesh_wound_percent.toFixed(8)}` + 
+          `  alien_abduction_percent: ${alien_abduction_percent.toFixed(8)}\n`
+        );
+        decrease_randomness = false;
+      };
     }
 
     // update previous boards for next iteration
