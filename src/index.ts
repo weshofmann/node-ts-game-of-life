@@ -1,3 +1,4 @@
+import { on } from 'events';
 import * as fs from 'fs';
 
 export type Cell = boolean;  // true for alive, false for dead
@@ -17,11 +18,18 @@ export type CellEvaluatorGenerator = (
 ) => CellEvaluator;
 
 
-const HEIGHT   = process.stdout.rows - 3;
+const HEIGHT   = process.stdout.rows - 7;
 const WIDTH    = process.stdout.columns - 2;
 const log_file = './game.log';
 
 const log = fs.createWriteStream(log_file);
+
+
+let step_count = 0;
+let life_will_find_a_way_count = 0;
+let alien_abduction_count = 0;
+let only_a_flesh_wound_count = 0;
+
 
 // this will generate a cell_updater function that has a set percentage chance of a cell staying alive
 export const cell_updater_generator: CellEvaluatorGenerator = (
@@ -62,6 +70,7 @@ export const cell_updater_generator: CellEvaluatorGenerator = (
       if (is_alive === false && Math.random() < only_a_flesh_wound_percent) {
         is_alive = true;
         log.write(`>>> (${x}, ${y}): Only a flesh wound!\n`);
+        only_a_flesh_wound_count++;
       };
 
       // Alien Abduction: If a live cell has exactly four live neighbors, it 
@@ -69,6 +78,7 @@ export const cell_updater_generator: CellEvaluatorGenerator = (
       if (living_neighbors === 4 && Math.random() < alien_abduction_percent) {
         is_alive = false;
         log.write(`>>> (${x}, ${y}): Alien abduction!\n`);
+        alien_abduction_count++;
       };
 
     } else { // The cell is currently dead
@@ -80,6 +90,7 @@ export const cell_updater_generator: CellEvaluatorGenerator = (
       if (living_neighbors >= 1 && Math.random() < life_will_find_a_way_percent) {
         is_alive = true;
         log.write(`>>> (${x}, ${y}): Life will find a way!\n`);
+        life_will_find_a_way_count++;
       };
     }
     return is_alive;
@@ -135,13 +146,22 @@ export const update_board = (
 
 
 // This function renders the board to the terminal.  It is not tail-recursive, but it doesn't need to be.
-export const render_board = (board: Board) => {
+export const render_board = (
+  board: Board,
+  alien_abduction_percent: number,
+  only_a_flesh_wound_percent: number,
+  life_will_find_a_way_percent: number
+) => {
   // Clear the terminal
   process.stdout.write('\u001b[0;0H');
   
   process.stdout.write(
-    `width: ${board[0].length}, height: ${board.length}\n` + "-".repeat(board[0].length + 2) + "\n"
+    `width: ${board[0].length} ` + 
+    `height: ${board.length} ` +
+    `     STEP: ${step_count}` +
+    "\n"
   );
+  process.stdout.write("-".repeat(board[0].length + 2) + "\n");
 
   board.forEach((row, y) => {
     let row_str = '|';
@@ -152,7 +172,25 @@ export const render_board = (board: Board) => {
     process.stdout.write(`${row_str}\n`);
     // process.stdout.write(`\x1b[${y + 3};1H${row_str}\n`);
   });
-  process.stdout.write("-".repeat(board[0].length + 2));
+  process.stdout.write("-".repeat(board[0].length + 2) + "\n");
+  process.stdout.write(
+    "alien_abduction %      : " + 
+    `${(alien_abduction_percent * 100).toFixed(8)}` +
+    `     alien_abduction_count     : ${alien_abduction_count}` +
+    "  \n"
+  );
+  process.stdout.write(
+    "only_a_flesh_wound %   : " +
+    `${(only_a_flesh_wound_percent * 100).toFixed(8)}` +
+    `     only_a_flesh_wound_count  : ${only_a_flesh_wound_count}` +
+    "  \n"
+  );
+  process.stdout.write(
+    "life_will_find_a_way % : " + 
+    `${(life_will_find_a_way_percent * 100).toFixed(8)}` +
+    `     life_will_find_a_way_count: ${life_will_find_a_way_count}` +
+    "  \n"
+  );
 };
 
 
@@ -181,9 +219,9 @@ export const start_game = () => {
   let decrease_randomness = false;
 
   let alien_abduction_percent = 0;
-  let alien_abduction_percent_increment = 0.000001;
+  let alien_abduction_percent_increment = 0.00001;
   let only_a_flesh_wound_percent = 0;
-  let only_a_flesh_wound_percent_increment = 0.000001;
+  let only_a_flesh_wound_percent_increment = 0.00005;
   let life_will_find_a_way_percent = 0;
   let life_will_find_a_way_percent_increment = 0.000001;
 
@@ -201,7 +239,12 @@ export const start_game = () => {
   process.stdout.write('\u001b[2J\u001b[0;0H');
 
   const loop = setInterval(() => {
-    render_board(board);
+    render_board(
+      board, 
+      alien_abduction_percent, 
+      only_a_flesh_wound_percent, 
+      life_will_find_a_way_percent
+    );
 
     // compare the currrent board with our previous boards
     if (prev_boards.some((prev_board) => are_boards_equal(board, prev_board))) {
@@ -255,6 +298,9 @@ export const start_game = () => {
 
     // now generate new board
     board = update_board(WIDTH, HEIGHT, cell_updater, board);
+    
+    // increment our step count
+    step_count++;
   }, 150);
 };
 
