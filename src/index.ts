@@ -13,6 +13,7 @@ export type CellEvaluator = (
 export type CellEvaluatorGenerator = (
   only_a_flesh_wound_percent: number,
   alien_abduction_percent: number,
+  life_will_find_a_way_percent: number
 ) => CellEvaluator;
 
 
@@ -25,7 +26,8 @@ const log = fs.createWriteStream(log_file);
 // this will generate a cell_updater function that has a set percentage chance of a cell staying alive
 export const cell_updater_generator: CellEvaluatorGenerator = (
   only_a_flesh_wound_percent, 
-  alien_abduction_percent
+  alien_abduction_percent,
+  life_will_find_a_way_percent
 ) => {
   // This is a CellEvaluator function that implement's the rules of Conway's Game of Life. 
   // It assigns a boolan value for a given cell based on the state of the cell's neighbors.
@@ -39,13 +41,48 @@ export const cell_updater_generator: CellEvaluatorGenerator = (
       const nx = x + dx, ny = y + dy;
       return count + (last_board[ny]?.[nx] ? 1 : 0);
     }, 0);
-    return (
-      (
-        (living_neighbors === 3) || 
-        (living_neighbors === 2 && last_board[y][x]) ||
-        (Math.random() < only_a_flesh_wound_percent && last_board[y][x])    // allow the possibility for a cell to randomly stay alive
-      ) && (Math.random() > alien_abduction_percent)
-    );
+
+    // set a default value of false
+    let is_alive: Cell = false;
+    const was_alive: Cell = last_board[y][x];
+    if (was_alive) { // The cell is currently alive
+      // These are the standard rules for Conway's Game of Life
+
+      // Underpopulation: If a live cell has fewer than two live neighbors, it dies.
+      if (living_neighbors < 2) is_alive = false;
+      // Survival: If a live cell has two or three live neighbors, it survives.
+      if (living_neighbors === 2 || living_neighbors === 3) is_alive = true;
+      // Overpopulation: If a live cell has more than three live neighbors, it dies.
+      if (living_neighbors > 3) is_alive = false;
+
+      // These are some non-standard rules I have added to make the game more interesting
+      // and to allow the game to un-stick itself if it becomes stuck.
+
+      // Only a Flesh Wound: If a live cell is marked for death, it has a chance to survive.
+      if (is_alive === false && Math.random() < only_a_flesh_wound_percent) {
+        is_alive = true;
+        log.write(`>>> (${x}, ${y}): Only a flesh wound!\n`);
+      };
+
+      // Alien Abduction: If a live cell has exactly four live neighbors, it 
+      // can be abducted (dies).
+      if (living_neighbors === 4 && Math.random() < alien_abduction_percent) {
+        is_alive = false;
+        log.write(`>>> (${x}, ${y}): Alien abduction!\n`);
+      };
+
+    } else { // The cell is currently dead
+      //Reproduction: If a dead cell has exactly three live neighbors, it becomes a live cell.
+      if (living_neighbors === 3) is_alive = true;
+
+      // Life Will Find a Way: If there are at least 2 live neighbors, and the cell has a 
+      // chance to come alive.
+      if (living_neighbors >= 1 && Math.random() < life_will_find_a_way_percent) {
+        is_alive = true;
+        log.write(`>>> (${x}, ${y}): Life will find a way!\n`);
+      };
+    }
+    return is_alive;
   };
   return cell_updater;
 };
@@ -144,12 +181,18 @@ export const start_game = () => {
   let decrease_randomness = false;
 
   let alien_abduction_percent = 0;
-  let alien_abduction_percent_increment = 0.0000001;
+  let alien_abduction_percent_increment = 0.000001;
   let only_a_flesh_wound_percent = 0;
-  let only_a_flesh_wound_percent_increment = 0.00001;
+  let only_a_flesh_wound_percent_increment = 0.000001;
+  let life_will_find_a_way_percent = 0;
+  let life_will_find_a_way_percent_increment = 0.000001;
+
+  let percent_decrement_scale = 0.25;
 
   let cell_updater: CellEvaluator = cell_updater_generator(
-    only_a_flesh_wound_percent, alien_abduction_percent
+    only_a_flesh_wound_percent, 
+    alien_abduction_percent,
+    life_will_find_a_way_percent
   ); 
 
   log.write("Starting game...\n");
@@ -164,31 +207,43 @@ export const start_game = () => {
     if (prev_boards.some((prev_board) => are_boards_equal(board, prev_board))) {
       only_a_flesh_wound_percent += only_a_flesh_wound_percent_increment;
       alien_abduction_percent += alien_abduction_percent_increment;
+      life_will_find_a_way_percent += life_will_find_a_way_percent_increment;
       cell_updater = cell_updater_generator(
         only_a_flesh_wound_percent,
-        alien_abduction_percent
+        alien_abduction_percent,
+        life_will_find_a_way_percent
       );
       log.write(`+++ INCREASING RANDOMNESS` + 
-        `  only_a_flesh_wound_percent: ${only_a_flesh_wound_percent.toFixed(8)}` + 
-        `  alien_abduction_percent: ${alien_abduction_percent.toFixed(8)}\n`
+        `  only_a_flesh_wound: ${only_a_flesh_wound_percent.toFixed(8)}` + 
+        `  alien_abduction: ${alien_abduction_percent.toFixed(8)}` +
+        `  life_will_find_a_way: ${life_will_find_a_way_percent.toFixed(8)}\n`
       );
     } else {
       if (only_a_flesh_wound_percent > 0) {
-        only_a_flesh_wound_percent -= Math.max(0, only_a_flesh_wound_percent_increment);
+        let decrement: number = only_a_flesh_wound_percent_increment * percent_decrement_scale;
+        only_a_flesh_wound_percent = Math.max(0, only_a_flesh_wound_percent - decrement);
         decrease_randomness = true;
       };
       if (alien_abduction_percent > 0) {
-        alien_abduction_percent -= Math.max(0, alien_abduction_percent_increment);
+        let decrement: number = alien_abduction_percent_increment * percent_decrement_scale;
+        alien_abduction_percent = Math.max(0, alien_abduction_percent - decrement);
+        decrease_randomness = true;
+      };
+      if (life_will_find_a_way_percent > 0) {
+        let decrement: number = life_will_find_a_way_percent_increment * percent_decrement_scale;
+        life_will_find_a_way_percent = Math.max(0, life_will_find_a_way_percent - decrement);
         decrease_randomness = true;
       };
       if (decrease_randomness) {
         cell_updater = cell_updater_generator(
           only_a_flesh_wound_percent,
-          alien_abduction_percent
+          alien_abduction_percent,
+          life_will_find_a_way_percent
         );
         log.write(`--- DECREASING RANDOMNESS` + 
-          `  only_a_flesh_wound_percent: ${only_a_flesh_wound_percent.toFixed(8)}` + 
-          `  alien_abduction_percent: ${alien_abduction_percent.toFixed(8)}\n`
+          `  only_a_flesh_wound: ${only_a_flesh_wound_percent.toFixed(8)}` + 
+          `  alien_abduction: ${alien_abduction_percent.toFixed(8)}` +
+          `  life_will_find_a_way: ${life_will_find_a_way_percent.toFixed(8)}\n`
         );
         decrease_randomness = false;
       };
@@ -200,7 +255,7 @@ export const start_game = () => {
 
     // now generate new board
     board = update_board(WIDTH, HEIGHT, cell_updater, board);
-  }, 50);
+  }, 150);
 };
 
 
