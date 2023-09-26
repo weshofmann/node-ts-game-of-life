@@ -221,9 +221,9 @@ export const start_game = () => {
   let alien_abduction_percent = 0;
   let alien_abduction_percent_increment = 0.00001;
   let only_a_flesh_wound_percent = 0;
-  let only_a_flesh_wound_percent_increment = 0.00005;
+  let only_a_flesh_wound_percent_increment = 0.000025;
   let life_will_find_a_way_percent = 0;
-  let life_will_find_a_way_percent_increment = 0.000001;
+  let life_will_find_a_way_percent_increment = 0.000005;
 
   let percent_decrement_scale = 0.25;
 
